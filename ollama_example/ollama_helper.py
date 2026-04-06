@@ -1,4 +1,3 @@
-import ollama
 import subprocess
 import base64
 import json
@@ -6,6 +5,13 @@ import re
 import os
 import time
 import shutil
+
+try:
+    from openai import OpenAI as _OpenAIClient
+    _BACKEND = 'openai'
+except ImportError:
+    import ollama as _ollama
+    _BACKEND = 'ollama'
 
 SYSTEM_PROMPT = """You are PiCar-X, a friendly small robot car assistant.
 Respond ONLY with a valid JSON object in this exact format (no markdown, no extra text):
@@ -46,8 +52,27 @@ class OllamaHelper:
         self.model = model
         self.vision_model = vision_model
         self.assistant_name = assistant_name
-        self.client = ollama.Client(host=host)
         self.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+
+        if _BACKEND == 'openai':
+            # llama.cpp server (or any OpenAI-compatible endpoint)
+            self.client = _OpenAIClient(base_url=f"{host}/v1", api_key="none")
+            self._chat = self._chat_openai
+        else:
+            # native Ollama
+            self.client = _ollama.Client(host=host)
+            self._chat = self._chat_ollama
+
+    def _chat_openai(self, messages, model):
+        response = self.client.chat.completions.create(
+            model=model,
+            messages=messages,
+        )
+        return response.choices[0].message.content
+
+    def _chat_ollama(self, messages, model):
+        response = self.client.chat(model=model, messages=messages)
+        return response.message.content
 
     def stt(self, audio, language=None):
         try:
@@ -69,12 +94,7 @@ class OllamaHelper:
         chat_print("user", msg)
         self.messages.append({"role": "user", "content": msg})
 
-        response = self.client.chat(
-            model=self.model,
-            messages=self.messages,
-        )
-
-        value = response.message.content
+        value = self._chat(self.messages, self.model)
         self.messages.append({"role": "assistant", "content": value})
         chat_print(self.assistant_name, value)
         return _parse_response(value)
@@ -85,18 +105,19 @@ class OllamaHelper:
         with open(img_path, "rb") as f:
             img_data = base64.b64encode(f.read()).decode("utf-8")
 
-        messages = self.messages + [{
-            "role": "user",
-            "content": msg,
-            "images": [img_data],
-        }]
+        if _BACKEND == 'openai':
+            img_message = {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": msg},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_data}"}},
+                ],
+            }
+        else:
+            img_message = {"role": "user", "content": msg, "images": [img_data]}
 
-        response = self.client.chat(
-            model=self.vision_model,
-            messages=messages,
-        )
-
-        value = response.message.content
+        messages = self.messages + [img_message]
+        value = self._chat(messages, self.vision_model)
         self.messages.append({"role": "user", "content": msg})
         self.messages.append({"role": "assistant", "content": value})
         chat_print(self.assistant_name, value)
