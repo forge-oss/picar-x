@@ -1,5 +1,5 @@
-from openai_helper import OpenAiHelper
-from keys import OPENAI_API_KEY, OPENAI_ASSISTANT_ID
+from ollama_helper import OllamaHelper
+from ollama_config import OLLAMA_HOST, OLLAMA_MODEL, OLLAMA_VISION_MODEL
 from preset_actions import *
 from utils import *
 
@@ -34,9 +34,9 @@ if '--no-img' in args:
 else:
     with_img = True
 
-# openai assistant init
+# ollama init
 # =================================================================
-openai_helper = OpenAiHelper(OPENAI_API_KEY, OPENAI_ASSISTANT_ID, 'picarx')
+ollama_helper = OllamaHelper(OLLAMA_HOST, OLLAMA_MODEL, OLLAMA_VISION_MODEL, 'picarx')
 
 LANGUAGE = []
 # LANGUAGE = ['zh', 'en'] # config stt language code, https://en.wikipedia.org/wiki/List_of_ISO_639_language_codes
@@ -44,13 +44,9 @@ LANGUAGE = []
 # VOLUME_DB = 5
 VOLUME_DB = 3
 
-# select tts voice role, counld be "alloy, echo, fable, onyx, nova, and shimmer"
-# https://platform.openai.com/docs/guides/text-to-speech/supported-languages
-TTS_VOICE = 'echo'
-
-# voice instructions for vibe
-# https://www.openai.fm/
-VOICE_INSTRUCTIONS = ""
+# espeak-ng voice: 'en', 'en-us', 'en-gb', 'zh', etc.
+# See: espeak-ng --voices
+TTS_VOICE = 'en'
 
 SOUND_EFFECT_ACTIONS = ["honking", "start engine"]
 
@@ -255,7 +251,7 @@ def main():
             # ----------------------------------------------------------------
             gray_print('stt ...')
             st = time.time()
-            _result = openai_helper.stt(audio, language=LANGUAGE)
+            _result = ollama_helper.stt(audio, language=LANGUAGE)
             gray_print(f"stt takes: {time.time() - st:.3f} s")
 
             if _result == False or _result == "":
@@ -289,9 +285,9 @@ def main():
         if with_img:
             img_path = './img_imput.jpg'
             cv2.imwrite(img_path, Vilib.img)
-            response = openai_helper.dialogue_with_img(_result, img_path)
+            response = ollama_helper.dialogue_with_img(_result, img_path)
         else:
-            response = openai_helper.dialogue(_result)
+            response = ollama_helper.dialogue(_result)
 
         gray_print(f'chat takes: {time.time() - st:.3f} s')
 
@@ -334,7 +330,7 @@ def main():
                 st = time.time()
                 _time = time.strftime("%y-%m-%d_%H-%M-%S", time.localtime())
                 _tts_f = f"./tts/{_time}_raw.wav"
-                _tts_status = openai_helper.text_to_speech(answer, _tts_f, TTS_VOICE, response_format='wav', instructions=VOICE_INSTRUCTIONS) # alloy, echo, fable, onyx, nova, and shimmer
+                _tts_status = ollama_helper.text_to_speech(answer, _tts_f, TTS_VOICE, response_format='wav')
                 if _tts_status:
                     tts_file = f"./tts/{_time}_{VOLUME_DB}dB.wav"
                     _tts_status = sox_volume(_tts_f, tts_file, VOLUME_DB)
