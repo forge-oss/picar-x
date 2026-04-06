@@ -1,151 +1,93 @@
-## Picar-X GPT examples usage
+# PiCar-X Ollama Example
+
+Run PiCar-X with a local LLM via [Ollama](https://ollama.com) — no API key required.
 
 ----------------------------------------------------------------
 
 ## Install dependencies
 
-- Make sure you have installed Pidog and related dependencies first
+- Make sure you have installed PiCar-X and related dependencies first
 
     <https://docs.sunfounder.com/projects/picar-x-v20/en/latest/python/python_start/install_all_modules.html>
 
-- Install openai and speech processing libraries
+- Install Ollama on the host machine (Pi or PC)
+
+    <https://ollama.com/download>
+
+- Install Python dependencies and system packages
 
 > [!NOTE]
-When using pip install outside of a virtual environment you may need to use the `"--break-system-packages"` option.
+> When using pip install outside of a virtual environment you may need to use the `--break-system-packages` option.
 
-    ```bash
-    sudo pip3 install -U openai --break-system-packages
-    sudo pip3 install -U openai-whisper --break-system-packages
-    sudo pip3 install SpeechRecognition --break-system-packages
+        sudo pip3 install ollama SpeechRecognition --break-system-packages
 
-    sudo apt install python3-pyaudio
-    sudo apt install sox
-    sudo pip3 install -U sox --break-system-packages
-    ```
+        sudo apt install python3-pyaudio
+        sudo apt install sox espeak-ng
+        sudo pip3 install -U sox --break-system-packages
 
 ----------------------------------------------------------------
 
-## Create your own GPT assistant
+## Pull Ollama models
 
-### GET API KEY
+    # Chat model (text only)
+    ollama pull llama3.2
 
-<https://platform.openai.com/api-keys>
+    # Vision model (required for image analysis, --no-img to skip)
+    ollama pull llava
 
-Fill your OPENAI_API_KEY into the `keys.py` file.
-
-![tutorial_1](./tutorial_1.png)
-
-### Create assistant and set Assistant ID
-
-<https://platform.openai.com/assistants>
-
-Fill your ASSISTANT_ID into the `keys.py` file.
-
-![tutorial_2](./tutorial_2.png)
-
-- Set Assistant Name
-
-- Describe your Assistant
-
-```markdown
-    You are a small car with AI capabilities named PaiCar-X. You can engage in conversations with people and react accordingly to different situations with actions or sounds. You are driven by two rear wheels, with two front wheels that can turn left and right, and equipped with a camera mounted on a 2-axis gimbal.
-
-    ## Response with Json Format, eg:
-    {"actions": ["start engine", "honking", "wave hands"], "answer": "Hello, I am PaiCar-X, your good friend."}
-
-    ## Response Style
-    Tone: Cheerful, optimistic, humorous, childlike
-    Preferred Style: Enjoys incorporating jokes, metaphors, and playful banter; prefers responding from a robotic perspective
-    Answer Elaboration: Moderately detailed
-
-    ## Actions you can do:
-    ["shake head", "nod", "wave hands", "resist", "act cute", "rub hands", "think", "twist body", "celebrate, "depressed"]
-    ## Sound effects:
-    ["honking", "start engine"]
-```
-
-- Select gpt model
-
-    The Example program will submit the current picture taken by the camera when sending the question, so as to use the image analysis function of `gpt-4o` or `gpt-4o-mini`. Of course, you can also choose `gpt3.5-turbo` or other models
+You can use any compatible models — update `OLLAMA_MODEL` and `OLLAMA_VISION_MODEL` in `ollama_config.py` to match.
 
 ----------------------------------------------------------------
 
-## Set Key for example
+## Configure
 
-Confirm that `keys.py` is configured correctly
+Edit `ollama_config.py`:
+
+    OLLAMA_HOST = "http://localhost:11434"  # change if Ollama runs on another machine
+    OLLAMA_MODEL = "llama3.2"              # any chat model you have pulled
+    OLLAMA_VISION_MODEL = "llava"          # multimodal model for image analysis
+
+----------------------------------------------------------------
 
 ## Run
 
-- Run with vioce
+- Run with voice input
 
-```bash
-sudo python3 gpt_car.py
-```
+        sudo python3 gpt_car.py
 
-- Run with keyboard
+- Run with keyboard input
 
-```bash
-sudo python3 gpt_car.py --keyboard
-```
+        sudo python3 gpt_car.py --keyboard
 
-- Run without image analysis
+- Run without image analysis (text-only model is sufficient)
 
-```bash
-sudo python3 gpt_car.py --keyboard --no-img
-```
+        sudo python3 gpt_car.py --keyboard --no-img
 
 > [!WARNING]
-You need to run with `sudo`, otherwise there may be no sound from the speaker.
-For certain Robot HATs, you might need to turn on the speaker switch with the command `"pinctrl set 20 op dh"` or `"robot-hat enable_speaker"`
-
-## Modify parameters [optional]
-
-- Set language of STT
-
-    Config `LANGUAGE` variable in the file `gpt_car.py` to improve STT accuracy and latency, `"LANGUAGE = []"`means supporting all languages, but it may affect the accuracy and latency of the speech-to-text (STT) system.
-    <https://platform.openai.com/docs/api-reference/audio/createTranscription#audio-createtranscription-language>
-
-- Set TTS volume gain
-
-    After TTS, the audio volume will be increased using sox, and the gain can be set through the `"VOLUME_DB"` parameter, preferably not exceeding `5`, as going beyond this might result in audio distortion.
-
-- Select TTS voice role
-
-    Config `TTS_VOICE` variable in the file `gpt_car.py` to select the TTS voice role counld be `"alloy, echo, fable, onyx, nova, and shimmer"`
-
-
-- Vibe (VOICE_INSTRUCTIONS)
-
-    Config `VOICE_INSTRUCTIONS` variable in the file `gpt_car.py` to change the vibe of voice.
-    </br>To_see: https://www.openai.fm/
-    
-```python
-# openai assistant init
-# =================================================================
-openai_helper = OpenAiHelper(OPENAI_API_KEY, OPENAI_ASSISTANT_ID, 'picarx')
-
-LANGUAGE = []
-# LANGUAGE = ['zh', 'en'] # config stt language code, https://en.wikipedia.org/wiki/List_of_ISO_639_language_codes
-
-# VOLUME_DB = 5
-VOLUME_DB = 3
-
-# select tts voice role, counld be "alloy, echo, fable, onyx, nova, and shimmer"
-# https://platform.openai.com/docs/guides/text-to-speech/supported-languages
-TTS_VOICE = 'echo'
-
-# voice instructions
-# https://www.openai.fm/
-VOICE_INSTRUCTIONS = ""
-
-```
+> Run with `sudo`, otherwise there may be no sound from the speaker.
+> For certain Robot HATs, you might need to enable the speaker with `"pinctrl set 20 op dh"` or `"robot-hat enable_speaker"`.
 
 ----------------------------------------------------------------
 
-## Perset actions
+## Modify parameters [optional]
 
-### Preset actions
+- **STT language** — set `LANGUAGE` in `gpt_car.py` to improve accuracy and latency.
+  `LANGUAGE = []` uses the default (`en-US`). Example: `LANGUAGE = ['zh']` for Chinese.
 
-- `preset_actions.py` contains preset actions, such as `shake_head`, `nod`, `depressed`, `honking`, `start_engine`, etc. You can run this file to see the preset actions:</br>
-  `python3 preset_actions.py`
+- **TTS volume gain** — set `VOLUME_DB` in `gpt_car.py`. Keep it at or below `5` to avoid distortion.
 
+- **TTS voice** — set `TTS_VOICE` in `gpt_car.py` to any `espeak-ng` voice.
+  Run `espeak-ng --voices` to list available voices. Common options: `en`, `en-us`, `en-gb`, `zh`.
+
+- **Chat / vision model** — update `OLLAMA_MODEL` / `OLLAMA_VISION_MODEL` in `ollama_config.py`.
+
+- **System prompt** — edit `SYSTEM_PROMPT` in `ollama_helper.py` to change the robot's personality.
+
+----------------------------------------------------------------
+
+## Preset actions
+
+`preset_actions.py` contains preset actions such as `shake_head`, `nod`, `depressed`, `honking`, `start_engine`, etc.
+Run it standalone to preview all actions:
+
+    python3 preset_actions.py
